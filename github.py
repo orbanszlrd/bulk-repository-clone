@@ -25,9 +25,13 @@ def main():
     if "message" in user:
         sys.exit(user["message"])
 
-    repos_url = f"{api_url}user/repos{query_params}&affiliation=owner" if username == "orbanszlrd" and token else f"{api_url}users/{username}/repos{query_params}"
-
+    repos_url = f"{api_url}user/repos{query_params}&affiliation=owner" if token else f"{api_url}users/{username}/repos{query_params}"
     projects = fetch_data(repos_url, headers)
+
+    if len(projects) > 0 and username != projects[0]["owner"]["login"]:
+        owner = projects[0]["owner"]["login"]
+        sys.exit( f"{owner} has on access to {username}'s private repositories")
+
     process_projects(username, projects, args.action)
 
     if "organizations_url" in user:
