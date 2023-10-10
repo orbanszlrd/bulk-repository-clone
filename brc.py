@@ -44,7 +44,7 @@ def main():
                 projects = fetch_data(repos_url, headers)
                 process_projects(owner, projects, args.action)
 
-    sys.exit("Success.")
+    sys.exit("Success")
 
 
 def get_args():
@@ -53,9 +53,7 @@ def get_args():
     parser.add_argument("-t", "--token")
     parser.add_argument("-a", "--action", default="list", help='Choices : list, clone, all (default: list)')
     parser.add_argument("-m", "--menu")
-
-#    parser.print_help()
-
+    
     return parser.parse_args()
 
 
@@ -64,7 +62,7 @@ def get_username(username):
 
 
 def get_token(token):
-    return token or input("Please provide GitHub token (press enter for public repositories): ")
+    return token or input("Please provide GitHub token (press enter for public repositories only): ")
 
 
 def fetch_data(url, headers): 
@@ -77,7 +75,7 @@ def process_projects(owner, projects, action):
     if len(projects) > 0:
         if action in ("list", "all"):
             print_projects(projects)
-
+        
         if action in ("clone", "all"):
             clone_and_update_projects(projects)
 
