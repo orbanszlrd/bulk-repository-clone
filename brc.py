@@ -29,9 +29,9 @@ def main():
     repos_url = f"{api_url}user/repos{query_params}&affiliation=owner" if token else f"{api_url}users/{username}/repos{query_params}"
     projects = fetch_data(repos_url, headers)
 
-    if len(projects) > 0 and username != projects[0]["owner"]["login"]:
+    if len(projects) > 0 and username.lower() != str(projects[0]["owner"]["login"]).lower():
         owner = projects[0]["owner"]["login"]
-        sys.exit( f"{owner} has no access to {username}'s private repositories")
+        sys.exit( f"{username} has no access to {owner}'s private repositories")
 
     process_projects(username, projects, args.action, args.dir)
 
