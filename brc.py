@@ -12,9 +12,10 @@ def main():
 
     username = get_username(args.username)
     token = get_token(args.token)
+    per_page = 100
 
     api_url = "https://api.github.com/"
-    query_params = "?sort=name&per_page=100"
+    query_params = f"?sort=name&per_page={per_page}"
     user_url = f"{api_url}users/{username}"
     headers = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
 
@@ -26,8 +27,25 @@ def main():
     if "message" in user:
         sys.exit(user["message"])
 
-    repos_url = f"{api_url}user/repos{query_params}&affiliation=owner" if token else f"{api_url}users/{username}/repos{query_params}"
-    projects = fetch_data(repos_url, headers)
+    projects = []
+
+    if token:
+        page = 1
+
+        while True:
+            repos_url = f"{api_url}user/repos{query_params}&affiliation=owner&page={page}"    
+            page_projects = fetch_data(repos_url, headers)
+            projects.extend(page_projects)
+            if len(page_projects) < per_page:
+                break
+            page +=1
+    else:
+        number_of_repos = user["public_repos"]
+        pages = get_pages(number_of_repos, per_page)
+
+        for page in range(1, pages + 1):
+            repos_url = f"{api_url}users/{username}/repos{query_params}&page={page}"
+            projects.extend(fetch_data(repos_url, headers))
 
     if len(projects) > 0 and username.lower() != str(projects[0]["owner"]["login"]).lower():
         owner = projects[0]["owner"]["login"]
@@ -40,9 +58,19 @@ def main():
 
         for organization in organizations:
             if "repos_url" in organization:
+                projects = []
                 owner = organization["login"]
-                repos_url = organization["repos_url"] + query_params
-                projects = fetch_data(repos_url, headers)
+                url = organization["repos_url"]
+                page = 1
+
+                while True:
+                    repos_url = f"{url}{query_params}&page={page}"
+                    page_projects = fetch_data(repos_url, headers)
+                    projects.extend(page_projects)
+                    if len(page_projects) < per_page:
+                        break
+                    page +=1
+
                 process_projects(owner, projects, args.action, args.dir)
 
     sys.exit(f"Finished processing {username}'s repositories")
@@ -71,6 +99,10 @@ def get_token(token):
 def fetch_data(url, headers): 
     response = requests.get(url, headers=headers)
     return response.json()
+
+
+def get_pages(number_of_repos, per_page):
+    return number_of_repos // per_page + 1 if number_of_repos % per_page else 0
 
 
 def process_projects(owner, projects, action, target_dir):
