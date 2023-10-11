@@ -45,7 +45,7 @@ def main():
                 projects = fetch_data(repos_url, headers)
                 process_projects(owner, projects, args.action, args.dir)
 
-    sys.exit("Finished cloning and updating repositories")
+    sys.exit(f"Finished processing {username}'s repositories")
 
 
 def get_args():
