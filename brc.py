@@ -79,7 +79,7 @@ def main():
 def get_args():
     default_dir = os.path.join("projects", "github")
 
-    parser = argparse.ArgumentParser(description="Clone and update GitHub repositories")
+    parser = argparse.ArgumentParser(description="Clone and pull GitHub repositories")
     parser.add_argument("-u", "--username")
     parser.add_argument("-t", "--token")
     parser.add_argument("-a", "--action", default="list", help='Choices : list, clone, all (default: list)')
@@ -113,7 +113,7 @@ def process_projects(owner, projects, action, target_dir):
             print_projects(projects)
         
         if action in ("clone", "all"):
-            clone_and_update_projects(projects, target_dir)
+            clone_and_pull_projects(projects, target_dir)
 
 
 def print_projects(projects):
@@ -123,7 +123,7 @@ def print_projects(projects):
     print()
 
 
-def clone_and_update_projects(projects, target_dir):
+def clone_and_pull_projects(projects, target_dir):
     env = {"GIT_SSH_COMMAND": "ssh -o StrictHostKeyChecking=no"}
 
     for project in projects :
@@ -132,14 +132,17 @@ def clone_and_update_projects(projects, target_dir):
         target_repo = os.path.abspath(os.path.join(target_dir, project['full_name']))
 
         try:
-            Repo.clone_from(project["ssh_url"], target_repo, env=env)
-            print("Cloned to", target_repo)
-        except GitCommandError:
-            print(f"Project {target_repo} already exists")
-            Repo(target_repo).remotes.origin.pull(env=env)
-            print("Updated")
-        except:
-            print("Unknown error")
+            if os.path.isdir(target_repo):
+                print(f"Project {target_repo} already exists")
+                Repo(target_repo).remotes.origin.pull(env=env)
+                print("Updated")
+            else:
+                Repo.clone_from(project["ssh_url"], target_repo, env=env)
+                print("Cloned to", target_repo)
+        except GitCommandError as e:
+            print(e)
+        except Exception as e:
+            print(e)
         print()
 
 
