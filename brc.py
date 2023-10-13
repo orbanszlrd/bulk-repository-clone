@@ -1,79 +1,89 @@
 #!/usr/bin/env python3
 
-from git import Repo, GitCommandError
+from git import Repo
 import argparse
 import os
 import requests
 import sys
 
-
 def main(): 
     args = get_args()
 
-    username = get_username(args.username)
-    token = get_token(args.token)
-    per_page = 100
+    username = args.username
+    token = args.token
 
-    api_url = "https://api.github.com/"
-    query_params = f"?sort=name&per_page={per_page}"
-    user_url = f"{api_url}users/{username}"
-    headers = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
+    while True:
+        username = get_username(username)
+        token = get_token(token)
+        per_page = 100
 
-    if token:
-        headers["Authorization"] = 'Bearer ' + token
+        api_url = "https://api.github.com/"
+        headers = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
 
-    user = fetch_data(user_url, headers)
+        if token:
+            headers["Authorization"] = 'Bearer ' + token
 
-    if "message" in user:
-        sys.exit(user["message"])
+        user_url = f"{api_url}users/{username}"
+        user = fetch_data(user_url, headers)
 
-    projects = []
+        if "message" in user:
+            print("\n" + user["message"] + "\n")
+            username = None
+            continue
 
-    if token:
-        page = 1
+        query_params = f"?sort=name&per_page={per_page}"
 
-        while True:
-            repos_url = f"{api_url}user/repos{query_params}&affiliation=owner&page={page}"    
-            page_projects = fetch_data(repos_url, headers)
-            projects.extend(page_projects)
-            if len(page_projects) < per_page:
-                break
-            page +=1
-    else:
-        number_of_repos = user["public_repos"]
-        pages = get_pages(number_of_repos, per_page)
+        projects = []
 
-        for page in range(1, pages + 1):
-            repos_url = f"{api_url}users/{username}/repos{query_params}&page={page}"
-            projects.extend(fetch_data(repos_url, headers))
+        if token:
+            page = 1
 
-    if len(projects) > 0 and username.lower() != str(projects[0]["owner"]["login"]).lower():
-        owner = projects[0]["owner"]["login"]
-        sys.exit( f"{username} has no access to {owner}'s private repositories")
+            while True:
+                repos_url = f"{api_url}user/repos{query_params}&affiliation=owner&page={page}"    
+                page_projects = fetch_data(repos_url, headers)
+                projects.extend(page_projects)
+                if len(page_projects) < per_page:
+                    break
+                page +=1
+        else:
+            number_of_repos = user["public_repos"]
+            pages = get_pages(number_of_repos, per_page)
 
-    process_projects(username, projects, args.action, args.dir)
+            for page in range(1, pages + 1):
+                repos_url = f"{api_url}users/{username}/repos{query_params}&page={page}"
+                projects.extend(fetch_data(repos_url, headers))
 
-    if "organizations_url" in user:
-        organizations = fetch_data(user["organizations_url"], headers)
+        if len(projects) > 0 and username.lower() != str(projects[0]["owner"]["login"]).lower():
+            owner = projects[0]["owner"]["login"]
+            sys.exit( f"{username} has no access to {owner}'s private repositories")
 
-        for organization in organizations:
-            if "repos_url" in organization:
-                projects = []
-                owner = organization["login"]
-                url = organization["repos_url"]
-                page = 1
+        process_projects(username, projects, args.action, args.dir)
 
-                while True:
-                    repos_url = f"{url}{query_params}&page={page}"
-                    page_projects = fetch_data(repos_url, headers)
-                    projects.extend(page_projects)
-                    if len(page_projects) < per_page:
-                        break
-                    page +=1
+        if "organizations_url" in user:
+            organizations = fetch_data(user["organizations_url"], headers)
 
-                process_projects(owner, projects, args.action, args.dir)
+            for organization in organizations:
+                if "repos_url" in organization:
+                    projects = []
+                    owner = organization["login"]
+                    url = organization["repos_url"]
+                    page = 1
 
-    sys.exit(f"Finished processing {username}'s repositories")
+                    while True:
+                        repos_url = f"{url}{query_params}&page={page}"
+                        page_projects = fetch_data(repos_url, headers)
+                        projects.extend(page_projects)
+                        if len(page_projects) < per_page:
+                            break
+                        page +=1
+
+                    process_projects(owner, projects, args.action, args.dir)
+
+        print(f"Finished processing {username}'s repositories")
+        input("\nPress Enter to continue, Ctrl + c to exit the script!\n")
+
+        username = None
+        token = None
 
 
 def get_args():
@@ -106,7 +116,7 @@ def get_pages(number_of_repos, per_page):
 
 
 def process_projects(owner, projects, action, target_dir):
-    print(f"\nusername: {owner}")
+    print(f"\nowner: {owner}")
     print(f"\n{len(projects)} repositories")
     if len(projects) > 0:
         if action in ("list", "all"):
@@ -154,4 +164,7 @@ def clone_and_pull_projects(projects, target_dir):
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print()
