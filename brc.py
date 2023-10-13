@@ -106,8 +106,8 @@ def get_pages(number_of_repos, per_page):
 
 
 def process_projects(owner, projects, action, target_dir):
-    print(f"username: {owner}")
-    print(f"{len(projects)} repositories")
+    print(f"\nusername: {owner}")
+    print(f"\n{len(projects)} repositories")
     if len(projects) > 0:
         if action in ("list", "all"):
             print_projects(projects)
@@ -124,6 +124,10 @@ def print_projects(projects):
 
 
 def clone_and_pull_projects(projects, target_dir):
+    cloned = 0
+    updated = 0
+    errors = 0
+
     env = {"GIT_SSH_COMMAND": "ssh -o StrictHostKeyChecking=no"}
 
     for project in projects :
@@ -136,14 +140,17 @@ def clone_and_pull_projects(projects, target_dir):
                 print(f"Project {target_repo} already exists")
                 Repo(target_repo).remotes.origin.pull(env=env)
                 print("Updated")
+                updated += 1
             else:
                 Repo.clone_from(project["ssh_url"], target_repo, env=env)
                 print("Cloned to", target_repo)
-        except GitCommandError as e:
-            print(e)
+                cloned += 1
         except Exception as e:
             print(e)
+            errors += 1
         print()
+
+    print(f"\n{cloned} projects cloned, {updated} projects updated, {errors} errors\n")
 
 
 if __name__ == '__main__':
